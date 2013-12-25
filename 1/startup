@@ -17,49 +17,79 @@ for _, minutes in pairs(uptime_periods) do
   end
 end
 
-wanted = {
-  id295   = 256, -- (wheat) seeds
-  id12659 = 256, -- barley seeds
-  id392   = 256, -- potato
-  id391   = 256, -- carrot
-  id360   = 256, -- melon
-  id351_2 = 256, -- cactus green
-  id86    = 64   -- pumpkin (seeds are 4x)
+wanted_minimum = 256
+wanted_fuels = {
+  wheat_seeds  = {id295   = 1},
+  barley_seeds = {id12659 = 1},
+  potatoes     = {id392   = 1},
+  carrots      = {id391   = 1},
+  cactus_green = {id351_2 = 1},
+
+  melon_seeds = {
+    id360 = 1, -- melons
+    id362 = 1  -- melon seeds
+  },
+
+  pumpkin_seeds = {
+    id86  = 4, -- pumpkins (become 4x seeds)
+    id361 = 1  -- seeds
+  },
+
+  bonemeal = {
+    id352    = 3, -- bones (become 3x bonemeal)
+    id351_15 = 1  -- bonemeal
+  }
 }
 
 needed = 0
-for key, amount in pairs(wanted) do
+wanted_by_idtag = {}
+for fuel_name, id_table in pairs(wanted_fuels) do
   needed = needed + 1
+
+  for idtag, multiplier in pairs(id_table) do
+    wanted_by_idtag[idtag] = {fuel_name, multiplier}
+  end
 end
 
 while true do
-  local missing = needed
-
   term.clear()
+
+  local fuels = {}
+  for fuel_name, id_table in pairs(wanted_fuels) do
+    fuels[fuel_name] = 0
+  end
 
   for key, item in pairs(pipe.getAvailableItems()) do
     local id = pipe.getItemID(item[1])
     local damage = pipe.getItemDamage(item[1])
-    local tag = "id" .. id
 
+    local idtag = "id" .. id
     if damage > 0 then
-      tag = tag .. "_" .. damage
+      idtag = idtag .. "_" .. damage
     end
 
-    local name = pipe.getUnlocalizedName(item[1])
-    local minimum = wanted[tag]
+    local wanted = wanted_by_idtag[idtag]
 
-    if minimum then
-      local quantity  = item[2]
-      --local stat_name = string.gsub(string.lower(name), "[^a-z]+", "_")
+    if wanted then
+      local quantity = item[2]
 
-      print(name .. ": " .. quantity .. " of " .. minimum)
-      if quantity >= minimum then
-        missing = missing - 1
-      end
+      local name = pipe.getUnlocalizedName(item[1])
+      print(name .. ": " .. quantity)
+      statsd.gauge("bioreactor.fuels.raw", quantity, {tags = {item = name}})
 
-      statsd.gauge("bioreactor.quantity", quantity, 
-        {tags = {item = name}})
+      local fuel_name  = wanted[1]
+      local multiplier = wanted[2]
+
+      fuels[fuel_name] = fuels[fuel_name] + (quantity * multiplier)
+    end
+  end
+
+  local missing = 0
+  for fuel_name, quantity in pairs(fuels) do
+    statsd.gauge("bioreactor.fuels", quantity, {tags = {item = fuel_name}})
+
+    if quantity < wanted_minimum then
+      missing = missing + 1
     end
   end
 
