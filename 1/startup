@@ -1,0 +1,117 @@
+-- ex: ft=lua
+
+os.loadAPI("apis/statsd")
+
+local pipe = peripheral.wrap("bottom")
+--print(pipe.help())
+
+loop_delay = 10
+uptime_periods = {5, 30, 60} -- minutes
+uptime = {}
+
+uptime_trim = 3
+for _, minutes in pairs(uptime_periods) do
+  local cycles = minutes * 60 / loop_delay
+  if cycles > uptime_trim then
+    uptime_trim = cycles
+  end
+end
+
+wanted = {
+  id295   = 256, -- (wheat) seeds
+  id12659 = 256, -- barley seeds
+  id392   = 256, -- potato
+  id391   = 256, -- carrot
+  id360   = 256, -- melon
+  id351_2 = 256, -- cactus green
+  id86    = 64   -- pumpkin (seeds are 4x)
+}
+
+needed = 0
+for key, amount in pairs(wanted) do
+  needed = needed + 1
+end
+
+while true do
+  local missing = needed
+
+  term.clear()
+
+  for key, item in pairs(pipe.getAvailableItems()) do
+    local id = pipe.getItemID(item[1])
+    local damage = pipe.getItemDamage(item[1])
+    local tag = "id" .. id
+
+    if damage > 0 then
+      tag = tag .. "_" .. damage
+    end
+
+    local name = pipe.getUnlocalizedName(item[1])
+    local minimum = wanted[tag]
+
+    if minimum then
+      local quantity  = item[2]
+      --local stat_name = string.gsub(string.lower(name), "[^a-z]+", "_")
+
+      print(name .. ": " .. quantity .. " of " .. minimum)
+      if quantity >= minimum then
+        missing = missing - 1
+      end
+
+      statsd.gauge("bioreactor.quantity", quantity, 
+        {tags = {item = name}})
+    end
+  end
+
+  statsd.gauge("bioreactor.missing", missing)
+
+  local enabled = false
+  if missing == 0 then
+    print("All quantities okay.  BioReactors enabled!")
+    enabled = true
+  else
+    print("Missing " .. missing .. " items.  BioReactors disabled. :(")
+  end
+
+  redstone.setOutput("left",  not enabled)
+  redstone.setOutput("right", not enabled)
+
+  table.insert(uptime, enabled)
+  local uptime_count = table.maxn(uptime)
+
+  if uptime_count > uptime_trim * 5 then
+    -- Garbage collection at 5x the limit (i.e. sparingly):
+    local new_uptime = {}
+    for i = uptime_count - uptime_trim + 1, uptime_count do
+      table.insert(new_uptime, uptime[i])
+    end
+    uptime = new_uptime
+    uptime_count = uptime_trim
+  end
+
+  print()
+
+  for key, minutes in pairs(uptime_periods) do
+    local cycles = minutes * 60 / loop_delay
+    local enabled = 0
+
+    if cycles > uptime_count then
+      cycles = uptime_count
+    end
+
+    for i = uptime_count - cycles + 1, uptime_count do
+      if uptime[i] then
+        enabled = enabled + 1
+      end
+    end
+
+    local percent = 100.0 * enabled / cycles
+    print(string.format(
+      minutes .. " minute uptime: %d of %d cycles (%.2f%%)",
+      enabled, cycles, percent
+    ))
+    statsd.gauge("bioreactor.uptime." .. minutes .. "min", percent)
+  end
+
+  sleep(loop_delay)
+end
