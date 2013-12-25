@@ -25,6 +25,9 @@ wanted_fuels = {
   carrots      = {id391   = 1},
   cactus_green = {id351_2 = 1},
 
+  red_mushrooms   = {id40 = 1},
+  brown_mushrooms = {id39 = 1},
+
   melon_seeds = {
     id360 = 1, -- melons
     id362 = 1  -- melon seeds
@@ -33,11 +36,6 @@ wanted_fuels = {
   pumpkin_seeds = {
     id86  = 4, -- pumpkins (become 4x seeds)
     id361 = 1  -- seeds
-  },
-
-  bonemeal = {
-    id352    = 3, -- bones (become 3x bonemeal)
-    id351_15 = 1  -- bonemeal
   }
 }
 
