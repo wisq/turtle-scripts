@@ -56,7 +56,7 @@ while true do
 
   local fuels = {}
   for fuel_name, id_table in pairs(wanted_fuels) do
-    fuels[fuel_name] = 0
+    fuels[fuel_name] = {items = {}, total = 0}
   end
 
   for key, item in pairs(pipe.getAvailableItems()) do
@@ -71,26 +71,41 @@ while true do
     local wanted = wanted_by_idtag[idtag]
 
     if wanted then
-      local quantity = item[2]
-
       local name = pipe.getUnlocalizedName(item[1])
-      print(name .. ": " .. quantity)
+      local quantity = item[2]
       statsd.gauge("bioreactor.fuels.raw", quantity, {tags = {item = name}})
 
       local fuel_name  = wanted[1]
       local multiplier = wanted[2]
 
-      fuels[fuel_name] = fuels[fuel_name] + (quantity * multiplier)
+      fuels[fuel_name]['items'][name] = quantity
+      fuels[fuel_name]['total'] =
+        fuels[fuel_name]['total'] + (quantity * multiplier)
     end
   end
 
   local missing = 0
-  for fuel_name, quantity in pairs(fuels) do
-    statsd.gauge("bioreactor.fuels", quantity, {tags = {item = fuel_name}})
+  for fuel_name, data in pairs(fuels) do
+    output = ""
+    for name, quantity in pairs(data['items']) do
+      if string.len(output) > 0 then
+        output = output .. " + "
+      end
+      output = output .. quantity .. " " .. name
+    end
 
-    if quantity < wanted_minimum then
+    total  = data['total']
+    output = output .. " = " .. total
+    
+    if total >= wanted_minimum then
+      output = output .. " (okay)"
+    else
+      output = output .. " (too low!)"
       missing = missing + 1
     end
+
+    statsd.gauge("bioreactor.fuels", total, {tags = {item = fuel_name}})
+    print(output)
   end
 
   statsd.gauge("bioreactor.missing", missing)
