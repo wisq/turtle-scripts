@@ -39,6 +39,11 @@ wanted_fuels = {
   }
 }
 
+custom_stat_names = {
+  id40 = "Red Mushroom",
+  id39 = "Brown Mushroom"
+}
+
 needed = 0
 wanted_by_idtag = {}
 for fuel_name, id_table in pairs(wanted_fuels) do
@@ -71,7 +76,9 @@ while true do
     if wanted then
       local name = pipe.getUnlocalizedName(item[1])
       local quantity = item[2]
-      statsd.gauge("bioreactor.fuels.raw", quantity, {tags = {item = name}})
+
+      local stat_name = custom_stat_names[idtag] or name
+      statsd.gauge("bioreactor.fuels.raw", quantity, {tags = {item = stat_name}})
 
       local fuel_name  = wanted[1]
       local multiplier = wanted[2]
