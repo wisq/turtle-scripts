@@ -3,7 +3,7 @@
 os.loadAPI("apis/statsd")
 
 local pipe = peripheral.wrap("bottom")
---print(pipe.help())
+local tank = peripheral.wrap("back")
 
 loop_delay = 10
 uptime_periods = {5, 30, 60} -- minutes
@@ -155,6 +155,10 @@ while true do
     ))
     statsd.gauge("bioreactor.uptime." .. minutes .. "min", percent)
   end
+
+  local tank_info = tank.getTankInfo("unknown")[1]
+  statsd.gauge("bioreactor.tank.amount",   tank_info.amount)
+  statsd.gauge("bioreactor.tank.capacity", tank_info.capacity)
 
   sleep(loop_delay)
 end
