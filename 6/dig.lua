@@ -244,6 +244,9 @@ function aggressive_moveto(x, y, z)
     elseif reason == lama.reason.unbreakable_block then
       debug("Hit bedrock; can't go further!")
       return false
+    elseif reason == lama.reason.fuel then
+      debug("Out of fuel!")
+      supplies_check()
     else
       debug("Can't progress: " .. reason .. " ... will try again.")
     end
