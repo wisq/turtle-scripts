@@ -1,0 +1,56 @@
+-- ex: ft=lua sw=2
+
+chest = peripheral.wrap("left")
+size  = chest.getInventorySize()
+
+min_cobble = 64
+max_cobble = 64*3
+
+min_lava = 3
+
+cobble_flush = "bottom"
+transposer = "right"
+
+while true do
+  local cobble = 0
+  local lava = 0
+
+  local contents = chest.getAllStacks()
+
+  for key, stack in pairs(contents) do
+    if stack['id'] == 4 and stack['dmg'] == 0 then
+      cobble = cobble + stack['qty']
+    elseif stack['id'] == 327 and stack['dmg'] == 0 then
+      lava = lava + 1
+    end
+  end
+
+  print()
+  print("Cobblestone:  " .. cobble)
+  print("Lava buckets: " .. lava)
+  local sleep_time = 10
+
+  if cobble >= max_cobble then
+    print("Flushing cobblestone ...")
+    redstone.setOutput(cobble_flush, true)
+    sleep_time = 1
+  elseif redstone.getOutput(cobble_flush) then
+    if cobble <= min_cobble then
+      print("Cobblestone flush complete.")
+      redstone.setOutput(cobble_flush, false)
+    else
+      print("Continuing to flush cobblestone ...")
+      sleep_time = 1
+    end
+  end
+
+  if lava < min_lava then
+    print("Bucketing more lava ...")
+    redstone.setOutput(transposer, true)
+    sleep_time = 1
+  else
+    redstone.setOutput(transposer, false)
+  end
+
+  sleep(sleep_time)
+end
