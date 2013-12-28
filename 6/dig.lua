@@ -14,8 +14,8 @@ local slot_ender_chest = 16
 
 local depth_bedrock = 2 -- assumes flat bedrock
 
-local debug_file = "log"
-local debug_file_rotate = "log.old"
+local debug_file = "dig.log"
+local debug_file_rotate = "dig.log.old"
 local debug_fh = nil
 
 function debug_rotate()
