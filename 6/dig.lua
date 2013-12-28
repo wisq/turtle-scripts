@@ -255,7 +255,7 @@ function aggressive_moveto(x, y, z)
   end
 end
 
-function mining_run(target_y, refill)
+function mining_run(target_y, refill, no_mining)
   local done = false
 
   debug("Commencing mining run from y=" .. lama.getY() .. " to y=" .. target_y .. " ...")
@@ -265,8 +265,10 @@ function mining_run(target_y, refill)
 
   while not done do
     supplies_check()
-    circle_check()
-    turtle.select(slot_cargo_min)
+    if not no_mining then
+      circle_check()
+    end
+    turtle.select(1)
 
     if lama.getY() > target_y then
       if not aggressive_down() then
@@ -320,7 +322,53 @@ function reposition(x, z, surface_y)
   end
 end
 
-local start_y = lama.getY()
-mining_run(2, true)
-reposition(lama.getX() + 2, lama.getZ() + 1, start_y)
-mining_run(start_y, true)
+function is_shaft(x,z)
+  return x % 5 == (z * 2) % 5
+end
+
+function shafts_in_square(x1, z1, x2, z2)
+  local shafts = {}
+  for x = x1, x2 do
+    for z = z1, z2 do
+      if is_shaft(x,z) then
+        table.insert(shafts, {x, z})
+      end
+    end
+  end
+  return shafts
+end
+
+function mine_square(x1, z1, x2, z2)
+  local queue = shafts_in_square(x1, z1, x2, z2)
+  local start_y = lama.getY()
+  local area = "between (" .. x1 .. "," .. z1 .. ") and (" .. x2 .. "," .. z2 .. ")"
+
+  debug("Digging " .. table.getn(queue) .. " shafts " .. area .. " ...")
+
+  while table.getn(queue) >= 2 do
+    x = queue[1][1]
+    z = queue[1][2]
+    reposition(queue[1][1], queue[1][2], start_y)
+    mining_run(depth_bedrock, true)
+    table.remove(queue, 1)
+
+    reposition(queue[1][1], queue[1][2], start_y)
+    mining_run(start_y, true)
+    table.remove(queue, 1)
+
+    debug(table.getn(queue) .. " shaft(s) left to go.")
+  end
+
+  if queue[1] then
+    debug("Doing final solo shaft.")
+    reposition(queue[1][1], queue[1][2], start_y)
+    mining_run(depth_bedrock, false)
+
+    debug("Fast-filling back to the surface.")
+    mining_run(start_y, true, true)
+  end
+
+  debug("Done mining area " .. area .. "!")
+end
+
+mine_square(128,192, 143,207)
