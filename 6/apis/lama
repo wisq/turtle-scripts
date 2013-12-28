@@ -675,7 +675,7 @@ end
 forairan = {
 init = function()
 local priority = type(startupPriority) == "number" and
-string.format("%2d") or
+string.format("%2d", startupPriority) or
 tostring(startupPriority)
 local path = "/init-scripts/" .. priority .. "_lama"
 local f = assert(fs.open(path, "w"),
