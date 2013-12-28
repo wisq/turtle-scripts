@@ -11,7 +11,7 @@ local invalidStateFile = "/.lama-invalid"
 -- This should be an integer value in the interval [0, 99], where lower values
 local startupPriority = 10
 local startupBackupFile = "/.lama-startup-backup"
-local useMinecraftCoordinates = false
+local useMinecraftCoordinates = true
 if lama then
 local env = getfenv()
 for k, v in pairs(lama) do
