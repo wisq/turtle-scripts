@@ -12,9 +12,23 @@ local slot_cargo_max = 14
 local slot_filler = 15
 local slot_ender_chest = 16
 
+local depth_bedrock = 2 -- assumes flat bedrock
+
 local debug_file = "log"
 local debug_file_rotate = "log.old"
-local debug_fh = fs.open(debug_file, "a") or fs.open(debug_file, "w")
+local debug_fh = nil
+
+function debug_rotate()
+  if fs.exists(debug_file) then
+    if fs.exists(debug_file_rotate) then
+      fs.delete(debug_file_rotate)
+    end
+    fs.move(debug_file, debug_file_rotate)
+  end
+  debug_fh = fs.open(debug_file, "w")
+end
+
+debug_rotate()
 
 function debug_log(text)
   debug_fh.writeLine(text)
@@ -22,9 +36,7 @@ function debug_log(text)
   if fs.getSize(debug_file) >= 100000 then
     debug_fh.writeLine("Rotating log.")
     debug_fh.close()
-    fs.delete(debug_file_rotate)
-    fs.move(debug_file, debug_file_rotate)
-    debug_fh = fs.open(debug_file, "w")
+    debug_rotate()
   else
     debug_fh.flush()
   end
