@@ -1,0 +1,135 @@
+--[[
+    init-scripts 1.0
+    Written by Forairan
+    
+    init-scripts is a startup program that allows execution of several startup
+    programs in different files, all without them interfering with each other.
+    
+    To write an init-script, just write a standard ComputerCraft Lua program,
+    and stick it in /init-scripts/. Please follow the standard naming convention
+    of "00_script", where "00" is the priority (lower numbered scripts get loaded
+    earlier in the boot process), and "script" is the purpose/name of your script.
+    Once put in the /init-scripts/ directory, the script will automatically run
+    on any computer with init-scripts installed.
+    
+    To disable an init-script, you don't need to completely delete it - just append
+    a ".disabled" suffix to it. For example, "00_script" will be executed, while
+    "00_script.disabled" will not. The disabling functionality can be enabled/disabled
+    using the configuration section below.
+    
+    Another security option is verbose mode, which prints the name of each
+    script as it is being executed. You can also do an "interactive boot"
+    by pressing ALT within 1 second of starting the computer. This allows you to select
+    exactly what will be loaded and what will not be loaded.
+    The interactive boot feature can be disabled via a configuration option below.
+]]--
+
+-- Configuration Section
+--[[
+    Allows or disallows script disabling.
+    
+    true: Allow script disabling
+    false: Disallow script disabling
+]]--
+local allowScriptDisabling = true
+
+--[[
+    Enables or disables verbose mode, where init-scripts prints the name of each
+    scripts as it is being executed.
+
+    true: Enable verbose mode
+    false: Disable verbose mode
+]]--
+local verboseMode = true
+
+--[[
+    Enables or disables the ability to boot interactively - as in, choose which scripts
+    will execute and which will not.
+    If this option is enabled, you can press "ALT" within 1 second while the computer boots
+    to enter interactive mode.
+    
+    true: Allow entering interactive mode
+    false: Disallow entering interactive mode
+]]--
+local allowInteractiveMode = true
+
+-- END OF USER-MODIFIABLE CODE
+
+os.pullEvent = os.pullEventRaw
+local usingInteractiveMode = false
+
+-- Check to see if /init-scripts/ exists first.
+if fs.isDir("/init-scripts") ~= true then
+    fs.makeDir("/init-scripts")
+end
+
+-- Get a listing of all the scripts
+local oldDir = shell.dir()
+shell.setDir("/init-scripts")
+local scriptList = fs.list("/init-scripts")
+local oldShellEnv = getfenv(shell.run)
+
+-- Interactive mode prompt
+if allowInteractiveMode then
+    print("Press ALT now to enter interactive mode.")
+    os.startTimer(1)
+    local event, p1, p2, p3 = os.pullEvent()
+    if event == "key" and p1 == 56 then
+        print("Performing interactive boot.")
+        usingInteractiveMode = true
+    end
+end
+
+-- Iterate through the listing and execute the scripts
+for _,file in ipairs(scriptList) do
+    skipped = false
+    if allowScriptDisabling and not usingInteractiveMode then
+        if string.sub(file, -9) == ".disabled" then
+            if verboseMode then
+                print("Not executing ".. file .." because it is disabled.")
+            end
+            skipped = true
+        end
+    end
+    
+    if usingInteractiveMode then
+        -- Ask the user if we want to execute it
+        local function promptUser()
+            write("Execute '" .. file .. "'? (y/n) ")
+            input = read()
+            
+            if input == "Y" or input == "y" then
+                skipped = false
+            elseif input == "N" or input == "n" then
+                skipped = true
+                print("Skipping.")
+            else
+                print("Invalid response.")
+                promptUser()
+            end
+        end
+        promptUser()
+    end
+    
+    if skipped ~= true then
+        -- Actually execute it
+        if verboseMode or usingInteractiveMode then
+            print("Executing ".. file)
+        end
+        
+        -- Set the environment so nothing nasty happens
+        local tEnv = {}
+        setmetatable(tEnv, {__index = _G})
+        setfenv(shell.run, tEnv)
+        shell.run(file)
+    end
+end
+
+-- Reset the shell.run environment
+setfenv(shell.run, oldShellEnv)
+
+-- We're done!
+if verboseMode then
+    print("init-scripts execution complete.")
+end
+shell.setDir(oldDir)

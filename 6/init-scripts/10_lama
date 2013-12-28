@@ -1,0 +1,3 @@
+assert(os.loadAPI("apis/lama"))
+lama.init()
+lama.hijackTurtleAPI()
