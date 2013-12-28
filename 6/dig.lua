@@ -12,21 +12,30 @@ local slot_cargo_max = 14
 local slot_filler = 15
 local slot_ender_chest = 16
 
-local modem = peripheral.wrap("right")
-local modem_channel = 202
-local wireless = modem and modem.isWireless and modem.isWireless()
-local label = os.getComputerLabel()
+local debug_file = "log"
+local debug_file_rotate = "log.old"
+local debug_fh = fs.open(debug_file, "a") or fs.open(debug_file, "w")
+
+function debug_log(text)
+  debug_fh.writeLine(text)
+
+  if fs.getSize(debug_file) >= 100000 then
+    debug_fh.writeLine("Rotating log.")
+    debug_fh.close()
+    fs.delete(debug_file_rotate)
+    fs.move(debug_file, debug_file_rotate)
+    debug_fh = fs.open(debug_file, "w")
+  else
+    debug_fh.flush()
+  end
+end
 
 function debug(text)
   print(text)
-  if wireless then
-    modem.transmit(modem_channel, 1, label .. ": " .. text)
-  end
+  debug_log(text)
 end
 function debug_error(text)
-  if wireless then
-    modem.transmit(modem_channel, 1, label .. " ERROR: " .. text)
-  end
+  debug_log("FATAL: " .. text)
   error(text)
 end
 
