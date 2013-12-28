@@ -1,2 +1,4 @@
 var.dump
 lastid*.txt
+.lama-*
+*.log
